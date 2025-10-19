@@ -1,0 +1,78 @@
+Graphe* graphe = creerGraphe(MAX_TACHES);
+    lireFichier(graphe, "../prece.txt");
+
+    Sommet sommets[MAX_TACHES];
+
+    float tempsMaxCycle;
+
+
+
+    initSommets(sommets, MAX_TACHES);
+
+    lireTempsMaxCycle("../rcycle.txt", &tempsMaxCycle);
+    lireTempsTaches("../temps.txt", sommets, MAX_TACHES);
+
+
+    int exclusions[MAX_TACHES][2]; // Assurez-vous que cela a une taille suffisante
+    int nbExclusions = lireExclusions("../exclu.txt", exclusions);
+
+
+// Récupérer l'ordre topologique
+    int* ordreTopologique = triTopologique(graphe);
+    if (ordreTopologique != NULL) {
+        printf("Ordre topologique : ");
+        for (int i = 0; i < graphe->nbSommets; i++) {
+            printf("%d ", ordreTopologique[i]);
+
+        }
+        printf("\n");
+    }
+
+    ///ASSIGNER TEMPS :
+    /*
+    assignerStationsT(sommets, MAX_TACHES, tempsMaxCycle);
+    for (int i = 0; i < MAX_TACHES; i++){
+        printf("tache: %d, stations: %d\n", sommets[i].tache, sommets[i].station);
+    }
+    printf("\n\n");
+    */
+
+    ///ASSIGNER EXLCLSUION :
+    assignerStationsE(sommets, MAX_TACHES, tempsMaxCycle, exclusions, nbExclusions);
+    /*for (int i = 0; i < MAX_TACHES; i++){
+        printf("tache: %d, stations: %d\n", sommets[i].tache, sommets[i].station);
+    }
+    printf("\n\n");*/
+    //ASSIGNER STATION: TEMPS + EXCLUSION
+    //assignerStationsET(sommets, MAX_TACHES, tempsMaxCycle, exclusions, nbExclusions);
+
+
+
+    int stationMax = -1;
+    // Trouver la station la plus élevée à laquelle une tâche est assignée
+    for (int i = 0; i < MAX_TACHES; i++) {
+        if (sommets[i].station > stationMax) {
+            stationMax = sommets[i].station;
+        }
+    }
+
+    // Afficher les tâches pour chaque station active
+    int station = 0;
+    do {
+        printf("Station %d: ", station + 1);
+        bool stationVide = true;
+
+        for (int i = 0; i < MAX_TACHES; i++) {
+            if (sommets[ordreTopologique[i]].station == station) {
+                printf("%d ", sommets[ordreTopologique[i]].tache);
+                stationVide = false;
+            }
+        }
+
+        if (stationVide) {
+            printf("Pas de tâches");
+        }
+        printf("\n");
+
+        station++;
+    } while (station <= stationMax);

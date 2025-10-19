@@ -1,0 +1,178 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <conio.h>
+#include <math.h>
+#include <time.h>
+#include <string.h>
+#include <windows.h>
+
+//DEFINE
+#define MAX_TACHES 36
+
+typedef struct {
+    int tache;
+    float temps;
+    int grp_ordonnancement;
+    int prece;
+    int station;
+    int assignee; // Pour marquer si la tâche a déjà été assignée à une station
+
+} Sommet;
+
+
+void initSommets(Sommet sommets[], int nbSommets) {
+    for (int i = 0; i < nbSommets; i++) {
+        sommets[i].tache = i;
+        sommets[i].temps = 0.0;
+        sommets[i].station = -1;
+        sommets[i].assignee = -1;
+
+    }
+}
+
+int lireExclusions(const char* nomFichier, int (*exclusions)[2]) {
+    FILE *fichier = fopen(nomFichier, "r");
+    if (fichier == NULL) {
+        perror("Erreur lors de l'ouverture du fichier");
+        return 0;
+    }
+
+    int nbPaires = 0;
+    while (fscanf(fichier, "%d %d", &exclusions[nbPaires][0], &exclusions[nbPaires][1]) == 2) {
+        nbPaires++;
+    }
+
+    fclose(fichier);
+    return nbPaires;
+}
+bool estExclue(int tache, int station, Sommet sommets[], int exclusions[][2], int nbExclusions) {
+    for (int i = 0; i < nbExclusions; i++) {
+        if ((exclusions[i][0] == tache || exclusions[i][1] == tache) &&
+            (sommets[exclusions[i][0]].station == station || sommets[exclusions[i][1]].station == station)) {
+            return true; // L'exclusion est violée
+        }
+    }
+    return false; // Aucune exclusion pour cette tâche et cette station
+}
+void assignerStationsE(Sommet sommets[], int nbSommets, float tempsMaxCycle, int exclusions[][2], int nbExclusions) {
+    for (int j = 0; j < nbSommets; j++) { // Parcourir les stations
+
+        for (int i = 0; i < nbSommets; i++) { // Essayer d'assigner chaque tâche à la station j
+            if (sommets[i].temps == 0.0 || sommets[i].station != -1) continue; // Ignorer si la tâche n'a pas de temps ou est déjà assignée
+
+            // Vérifier les contraintes
+            if (!estExclue(i, j, sommets, exclusions, nbExclusions)) {
+                sommets[i].station = j; // Assigner la tâche i à la station j
+                //printf("temps: %f", tempsCumule);
+            }
+        }
+    }
+}
+void assignerStationsET(Sommet sommets[], int nbSommets, float tempsMaxCycle, int exclusions[][2], int nbExclusions) {
+    for (int j = 0; j < nbSommets; j++) { // Parcourir les stations
+        float tempsCumule = 0.0;
+
+        for (int i = 0; i < nbSommets; i++) { // Essayer d'assigner chaque tâche à la station j
+            if (sommets[i].temps == 0.0 || sommets[i].station != -1) continue; // Ignorer si la tâche n'a pas de temps ou est déjà assignée
+
+            // Vérifier les contraintes
+            if (!estExclue(i, j, sommets, exclusions, nbExclusions) && tempsCumule + sommets[i].temps <= tempsMaxCycle) {
+                sommets[i].station = j; // Assigner la tâche i à la station j
+                tempsCumule += sommets[i].temps;
+                //printf("temps: %f", tempsCumule);
+            }
+        }
+    }
+}
+
+void assignerStationsT(Sommet sommets[], int nbSommets, float tempsMaxCycle) {
+    for (int j = 0; j < nbSommets; j++) { // Parcourir les stations
+        float tempsCumule = 0.0;
+
+        for (int i = 0; i < nbSommets; i++) { // Essayer d'assigner chaque tâche à la station j
+            if (sommets[i].temps == 0.0 || sommets[i].station != -1) continue; // Ignorer si la tâche n'a pas de temps ou est déjà assignée
+            if (tempsCumule + sommets[i].temps <= tempsMaxCycle) {
+                sommets[i].station = j; // Assigner la tâche i à la station j
+                tempsCumule += sommets[i].temps;
+                printf("temps: %f\n", tempsCumule);
+            }
+        }
+    }
+}
+
+void lireTempsMaxCycle(const char* nomFichier, float *tempsMax) {
+    FILE *fichier = fopen(nomFichier, "r");
+    if (fichier == NULL) {
+        perror("Erreur lors de l'ouverture du fichier");
+        exit(1);
+    }
+
+    if (fscanf(fichier, "%f", tempsMax) != 1) {
+        fprintf(stderr, "Erreur de format dans le fichier %s\n", nomFichier);
+        exit(1);
+    }
+
+    fclose(fichier);
+}
+void lireTempsTaches(const char* nomFichier, Sommet sommets[], int taille) {
+    FILE *fichier = fopen(nomFichier, "r");
+    int tache;
+    float temps;
+
+    if (fichier == NULL) {
+        perror("Erreur lors de l'ouverture du fichier");
+        exit(1);
+    }
+
+    while (fscanf(fichier, "%d %f", &tache, &temps) == 2) {
+        if (tache >= 1 && tache < taille) {
+            sommets[tache].temps = temps;
+        }
+    }
+    fclose(fichier);
+}
+
+
+
+int main() {
+    float tempsMaxCycle;
+
+    Sommet sommets[MAX_TACHES];
+    initSommets(sommets, MAX_TACHES);
+
+    lireTempsMaxCycle("../rcycle.txt", &tempsMaxCycle);
+    lireTempsTaches("../temps.txt", sommets, MAX_TACHES);
+
+
+    int exclusions[MAX_TACHES][2]; // Assurez-vous que cela a une taille suffisante
+    int nbExclusions = lireExclusions("../exclu.txt", exclusions);
+
+
+    ///ASSIGNER TEMPS :
+    /*
+    assignerStationsT(sommets, MAX_TACHES, tempsMaxCycle);
+    for (int i = 0; i < MAX_TACHES; i++){
+        printf("tache: %d, stations: %d\n", sommets[i].tache, sommets[i].station);
+    }
+    printf("\n\n");
+     */
+
+    ///ASSIGNER EXLCLSUION :
+    /*assignerStationsE(sommets, MAX_TACHES, tempsMaxCycle, exclusions, nbExclusions);
+    for (int i = 0; i < MAX_TACHES; i++){
+        printf("tache: %d, stations: %d\n", sommets[i].tache, sommets[i].station);
+    }
+    printf("\n\n");*/
+
+    //ASSIGNER STATION: TEMPS + EXCLUSION
+    /*assignerStationsET(sommets, MAX_TACHES, tempsMaxCycle, exclusions, nbExclusions);
+    for (int i = 0; i < MAX_TACHES; i++){
+        printf("tache: %d, stations: %d\n", sommets[i].tache, sommets[i].station);
+    }
+    printf("\n\n");*/
+
+
+
+    return 0;
+}
